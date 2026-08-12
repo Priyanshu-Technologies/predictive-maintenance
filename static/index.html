@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Predictive Maintenance — Live Diagnostic</title>
+<style>
+  :root{
+    --bg: #0b0f0d;
+    --panel: #111712;
+    --line: #22301f;
+    --amber: #ffb454;
+    --amber-dim: #8a6a3a;
+    --green: #6fcf97;
+    --red: #e8664f;
+    --text: #d9e4d3;
+    --text-dim: #7c8a76;
+    --mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+    --sans: 'IBM Plex Sans', system-ui, sans-serif;
+  }
+  @font-face{
+    font-family:'IBM Plex Mono'; src: local('IBM Plex Mono');
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:var(--sans);
+    background-image:
+      radial-gradient(circle at 20% 0%, rgba(111,207,151,0.05), transparent 40%),
+      radial-gradient(circle at 80% 100%, rgba(255,180,84,0.05), transparent 40%);
+    min-height:100vh;
+  }
+  .wrap{max-width:920px; margin:0 auto; padding:48px 24px 80px;}
+  header{border-bottom:1px solid var(--line); padding-bottom:20px; margin-bottom:32px;}
+  .eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.18em; color:var(--amber); text-transform:uppercase;}
+  h1{font-size:26px; margin:8px 0 4px; font-weight:600; letter-spacing:-0.01em;}
+  .sub{color:var(--text-dim); font-size:14px; max-width:60ch; line-height:1.5;}
+
+  .grid{display:grid; grid-template-columns: 1.1fr 1fr; gap:24px;}
+  @media (max-width:760px){ .grid{grid-template-columns:1fr;} }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:4px;
+    padding:22px;
+  }
+  .panel h2{
+    font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--text-dim); margin:0 0 18px;
+  }
+
+  label{display:block; font-size:12px; color:var(--text-dim); margin:14px 0 6px;}
+  label:first-child{margin-top:0;}
+  input, select{
+    width:100%; background:#0e130f; border:1px solid var(--line); color:var(--text);
+    padding:10px 12px; border-radius:3px; font-family:var(--mono); font-size:14px;
+    outline:none; transition:border-color .15s;
+  }
+  input:focus, select:focus{border-color:var(--amber-dim);}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+
+  button{
+    margin-top:20px; width:100%; padding:13px; border-radius:3px; border:1px solid var(--amber);
+    background:transparent; color:var(--amber); font-family:var(--mono); font-size:13px;
+    letter-spacing:.06em; text-transform:uppercase; cursor:pointer; transition:all .15s;
+  }
+  button:hover{background:var(--amber); color:#151a12;}
+  button:disabled{opacity:.4; cursor:default; background:transparent; color:var(--amber);}
+
+  .readout{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; min-height:260px; gap:6px;
+  }
+  .readout .placeholder{color:var(--text-dim); font-family:var(--mono); font-size:13px;}
+  .status-dot{width:10px; height:10px; border-radius:50%; margin-bottom:10px;}
+  .status-dot.normal{background:var(--green); box-shadow:0 0 12px var(--green);}
+  .status-dot.failure{background:var(--red); box-shadow:0 0 12px var(--red);}
+  .verdict{font-family:var(--mono); font-size:22px; letter-spacing:.06em; text-transform:uppercase;}
+  .verdict.normal{color:var(--green);}
+  .verdict.failure{color:var(--red);}
+  .prob{font-family:var(--mono); font-size:44px; font-weight:600; margin:10px 0 2px;}
+  .prob-label{font-size:11px; color:var(--text-dim); letter-spacing:.1em; text-transform:uppercase;}
+
+  .barwrap{width:100%; margin-top:18px;}
+  .bar-track{height:6px; background:#1a2318; border-radius:3px; overflow:hidden;}
+  .bar-fill{height:100%; border-radius:3px; transition:width .5s ease;}
+  .risk-tag{
+    margin-top:14px; font-family:var(--mono); font-size:11px; letter-spacing:.1em;
+    padding:5px 12px; border-radius:20px; border:1px solid var(--line); text-transform:uppercase;
+  }
+
+  .err{color:var(--red); font-family:var(--mono); font-size:12px; margin-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Sensor Diagnostic Console</div>
+    <h1>Predictive Maintenance</h1>
+    <p class="sub">Enter a live sensor snapshot from the machine. The model estimates the probability of failure from air/process temperature, rotational speed, torque, and tool wear.</p>
+  </header>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Sensor Input</h2>
+      <form id="form">
+        <label for="type">Product Type</label>
+        <select id="type">
+          <option value="L">L — Low</option>
+          <option value="M" selected>M — Medium</option>
+          <option value="H">H — High</option>
+        </select>
+
+        <div class="row2">
+          <div>
+            <label for="air_temperature">Air Temp (K)</label>
+            <input type="number" step="0.1" id="air_temperature" value="300.5">
+          </div>
+          <div>
+            <label for="process_temperature">Process Temp (K)</label>
+            <input type="number" step="0.1" id="process_temperature" value="310.2">
+          </div>
+        </div>
+
+        <div class="row2">
+          <div>
+            <label for="rotational_speed">Rotational Speed (rpm)</label>
+            <input type="number" step="1" id="rotational_speed" value="1500">
+          </div>
+          <div>
+            <label for="torque">Torque (Nm)</label>
+            <input type="number" step="0.1" id="torque" value="40.5">
+          </div>
+        </div>
+
+        <label for="tool_wear">Tool Wear (min)</label>
+        <input type="number" step="1" id="tool_wear" value="110">
+
+        <button type="submit" id="submitBtn">Run Diagnostic</button>
+        <div class="err" id="err"></div>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h2>Result</h2>
+      <div class="readout" id="readout">
+        <div class="placeholder">Awaiting input — run a diagnostic to see the model's read.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API_BASE = window.location.origin;
+
+  const form = document.getElementById('form');
+  const readout = document.getElementById('readout');
+  const errBox = document.getElementById('err');
+  const btn = document.getElementById('submitBtn');
+
+  function riskColor(level){
+    return {Low:'var(--green)', Medium:'var(--amber)', High:'#f2994a', Critical:'var(--red)'}[level] || 'var(--text-dim)';
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errBox.textContent = '';
+    btn.disabled = true;
+    btn.textContent = 'Running…';
+
+    const payload = {
+      type: document.getElementById('type').value,
+      air_temperature: parseFloat(document.getElementById('air_temperature').value),
+      process_temperature: parseFloat(document.getElementById('process_temperature').value),
+      rotational_speed: parseFloat(document.getElementById('rotational_speed').value),
+      torque: parseFloat(document.getElementById('torque').value),
+      tool_wear: parseFloat(document.getElementById('tool_wear').value),
+    };
+
+    try{
+      const res = await fetch(`${API_BASE}/predict`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      });
+      if(!res.ok){
+        const body = await res.json().catch(()=>({detail: res.statusText}));
+        throw new Error(body.detail || 'Request failed');
+      }
+      const data = await res.json();
+      const isFailure = data.prediction === 1;
+      const pct = (data.failure_probability * 100).toFixed(1);
+      const color = riskColor(data.risk_level);
+
+      readout.innerHTML = `
+        <div class="status-dot ${isFailure ? 'failure' : 'normal'}"></div>
+        <div class="verdict ${isFailure ? 'failure' : 'normal'}">${data.label}</div>
+        <div class="prob">${pct}%</div>
+        <div class="prob-label">Estimated Failure Probability</div>
+        <div class="barwrap">
+          <div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${color};"></div></div>
+        </div>
+        <div class="risk-tag" style="color:${color}; border-color:${color};">${data.risk_level} Risk</div>
+      `;
+    }catch(err){
+      errBox.textContent = err.message;
+    }finally{
+      btn.disabled = false;
+      btn.textContent = 'Run Diagnostic';
+    }
+  });
+</script>
+</body>
+</html>
