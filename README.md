@@ -109,4 +109,3 @@ The application allows users to enter a machine's current operating conditions a
 
 👨‍💻 Author
 Priyanshu Sharma
-**LinkedIn:** [Priyanshu Sharma](https://www.linkedin.com/in/priyanshu-sharma-646233394/)
