@@ -106,3 +106,7 @@ The application allows users to enter a machine's current operating conditions a
                     │ Failure Probability │
                     │    + Risk Level     │
                     └─────────────────────┘
+
+👨‍💻 Author
+Priyanshu Sharma
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Priyanshu%20Sharma-0A66C2?style=for-the-badge&logo=linkedin)](https://www.linkedin.com/in/priyanshu-sharma-646233394/)
